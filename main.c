@@ -93,12 +93,12 @@ void insert(void)
 {
     char ans='y';
     char *string = NULL;
-    size_t len=0;
+    size_t len=31;
     size_t len_size=0;
     clrscr();
     printf("\nPhone Book12<::>Insert Contacts");
     printf("\n--------------------------------------------------------------------------------");
-    string = (char *)malloc(31);
+//    string = (char *)malloc(31);
 
     while(ans=='y'){
         if(last == TOTAL_CONTACTS)
@@ -129,6 +129,7 @@ void insert(void)
             last++;
         }
     }
+    free(string);
     printf("\n\nYou have inserted ( %d ) contact!\nPress a key to return main page & continue program|-->",last);
     getc(stdin);
 }
@@ -575,4 +576,12 @@ void clrscr()
 void gotoxy(int x, int y)
 {
     printf("%c[%d;%df", 0x1B, y, x);
+}
+
+void exit_program()
+{
+    int i = 0;
+    for (i = 0; i < TOTAL_CONTACTS; ++i) {
+    }
+    exit(0);
 }
