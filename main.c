@@ -53,7 +53,7 @@ void sortc(void);
 
 void help(void);
 
-size_t get_input(char* str);
+size_t get_input(char** str, size_t* len);
 
 int last;
 
@@ -115,6 +115,7 @@ int main() {
 void insert(void) {
     char ans = 'y';
     char *string = NULL;
+    size_t len = 0;
     size_t len_size = 0;
     clrscr();
     printf("\nPhone Book12<::>Insert Contacts");
@@ -127,20 +128,19 @@ void insert(void) {
         else {
             printf("\n\nData of Contact %2.2d{\n", last + 1);
             printf("\n\t  1-F.Name: ");
-            get_input(string);
+            get_input(&string, &len);
 //            len_size = getline(&string, &len, stdin);
             strncpy(A[last].fname, string, NAME_LENGTH);
-
             printf("\t  2-L.Name: ");
-            get_input(string);
+            get_input(&string, &len);
             strncpy(A[last].lname, string, NAME_LENGTH);
 
             printf("\t  3-Tele.P: ");
-            get_input(string);
+            get_input(&string, &len);
             strncpy(A[last].telep, string, PHONE_LENGTH);
 
             printf("\t  4-Cell.P: ");
-            get_input(string);
+            get_input(&string, &len);
             strncpy(A[last].cellp, string, PHONE_LENGTH);
 
 
@@ -168,11 +168,11 @@ void delet(void) {
     printf("\n--------------------------------------------------------------------------------");
     printf("\n::Enter data of the contact that you want delete it,please:");
     printf("\n\n  ::Enter first name: ");
-    get_input(input);
+    get_input(&input, &len);
     strncpy(dfname_string, input, NAME_LENGTH);
 
     printf("\n  ::Enter last name: ");
-    get_input(input);
+    get_input(&input, &len);
     strncpy(dlname_string, input, NAME_LENGTH);
 
     for (i = 0; i < last; i++) {
@@ -592,6 +592,6 @@ void gotoxy(int x, int y) {
     printf("%c[%d;%df", 0x1B, y, x);
 }
 
-size_t get_input(char* str) {
-    return getline(&str, NULL, stdin);
+size_t get_input(char** str, size_t* len) {
+    return getline(str, len, stdin);
 }
