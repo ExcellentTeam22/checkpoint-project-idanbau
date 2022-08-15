@@ -3,19 +3,23 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define NAME_LENGTH 31
 #define PHONE_LENGTH 15
 
 struct contact {
-    char fname[ NAME_LENGTH];
-    char lname[ NAME_LENGTH];
-    char telep[ PHONE_LENGTH];
-    char cellp[ PHONE_LENGTH];
+    char fname[NAME_LENGTH];
+    char lname[NAME_LENGTH];
+    char telep[PHONE_LENGTH];
+    char cellp[PHONE_LENGTH];
+    struct contact *next;
 };
 
-#define TOTAL_CONTACTS 5
-struct contact A[TOTAL_CONTACTS];
+struct contact *A = NULL;
+
+char *ALLOCATE_MEMORY = NULL;
+size_t ALLOCATE_SIZE = 0;
 
 void clrscr(void);
 
@@ -25,17 +29,20 @@ void insert(void);
 
 void delet(void);
 
+
 void edit(void);
 
 void search(void);
 
-void searchf(void);
+void searchBy(int (*check)(const struct contact *current, const char *value));
 
-void searchl(void);
+int fNameMatch(const struct contact *current, const char *pattern);
 
-void searchp(void);
+int lNameMatch(const struct contact *current, const char *pattern);
 
-void searchc(void);
+int telpMatch(const struct contact *current, const char *pattern);
+
+int cellpMatch(const struct contact *current, const char *pattern);
 
 void list(void);
 
@@ -43,24 +50,33 @@ void list2(void);
 
 void sort(void);
 
-void sortf(void);
+struct contact *mergeSort(struct contact *head, int (*compare)(const struct contact *r, const struct contact *l));
 
-void sortl(void);
+void split(struct contact *list, struct contact **list1, struct contact **list2);
 
-void sortp(void);
+struct contact *
+merge(struct contact *list1, struct contact *list2, int (*compare)(const struct contact *r, const struct contact *l));
 
-void sortc(void);
+int fNameCmp(const struct contact *r, const struct contact *l);
+
+int lNameCmp(const struct contact *r, const struct contact *l);
+
+int telpCmp(const struct contact *r, const struct contact *l);
+
+int cellpCmp(const struct contact *r, const struct contact *l);
 
 void help(void);
 
-size_t get_input(char** str, size_t* len);
+void get_input(int len, char str[]);
+
+void exitFreeMemory();
 
 int last;
 
 int main() {
     int count = 1;
     char n;
-    while (count) {
+    while (1) {
         clrscr();
         printf("\n|Phone Book12<::>Home|\n");
         printf("--------------------------------------------------------------------------------\n");
@@ -74,7 +90,7 @@ int main() {
         printf("\t[7] |--> Help\n");
         printf("\t[8] |--> Exit\n");
         printf("\n\tPlease Enter Your Choice (1-8): ");
-        n = getc(stdin);
+        n = (char) getc(stdin);
         getc(stdin);
         switch (n) {
             case '1':
@@ -99,8 +115,8 @@ int main() {
                 help();
                 break;
             case '8':
-                exit(1);
-                break;
+                exitFreeMemory();
+                return EXIT_SUCCESS;
             default:
                 printf("\nThere is no item with symbol \"%c\".Please enter a number between 1-8!\nPress any key to continue...",
                        n);
@@ -114,102 +130,95 @@ int main() {
 
 void insert(void) {
     char ans = 'y';
-    char *string = NULL;
-    size_t len = 0;
-    size_t len_size = 0;
     clrscr();
     printf("\nPhone Book12<::>Insert Contacts");
     printf("\n--------------------------------------------------------------------------------");
-//    string = (char *)malloc(31);
-
     while (ans == 'y') {
-        if (last == TOTAL_CONTACTS)
-            last = 0;
-        else {
-            printf("\n\nData of Contact %2.2d{\n", last + 1);
-            printf("\n\t  1-F.Name: ");
-            get_input(&string, &len);
-//            len_size = getline(&string, &len, stdin);
-            strncpy(A[last].fname, string, NAME_LENGTH);
-            printf("\t  2-L.Name: ");
-            get_input(&string, &len);
-            strncpy(A[last].lname, string, NAME_LENGTH);
-
-            printf("\t  3-Tele.P: ");
-            get_input(&string, &len);
-            strncpy(A[last].telep, string, PHONE_LENGTH);
-
-            printf("\t  4-Cell.P: ");
-            get_input(&string, &len);
-            strncpy(A[last].cellp, string, PHONE_LENGTH);
-
-
-            printf("\n|-->Data Recorded!}");
-            printf("\n\t\t\tNext Contact?(y/n) Answer:");
-            ans = getc(stdin);
-            getc(stdin);
-            last++;
-        }
+        struct contact *new_contact = (struct contact *) malloc(sizeof(struct contact));
+        printf("\n\nData of Contact %2.2d{\n", last + 1);
+        printf("\n\t  1-F.Name: ");
+        get_input(NAME_LENGTH, new_contact->fname);
+        printf("\t  2-L.Name: ");
+        get_input(NAME_LENGTH, new_contact->lname);
+        printf("\t  3-Tele.P: ");
+        get_input(PHONE_LENGTH, new_contact->telep);
+        printf("\t  4-Cell.P: ");
+        get_input(PHONE_LENGTH, new_contact->cellp);
+        printf("\n|-->Data Recorded!}");
+        printf("\n\t\t\tNext Contact?(y/n) Answer:");
+        new_contact->next = A;
+        A = new_contact;
+        ans = (char) fgetc(stdin);
+        fgetc(stdin);
+        last++;
     }
-    free(string);
+
     printf("\n\nYou have inserted ( %d ) contact!\nPress a key to return main page & continue program|-->", last);
     getc(stdin);
 }
 
 void delet(void) {
     char dfname_string[NAME_LENGTH], dlname_string[NAME_LENGTH];
-    char *input = NULL;
-    size_t len = 0;
-    size_t len_size = 0;
-    register int i, j, find = 0;
+    struct contact *front, *rear, *temp;
+    register int find = 0;
     char ch;
     clrscr();
     printf("\nPhone Book12<::>Delete Contacts");
     printf("\n--------------------------------------------------------------------------------");
     printf("\n::Enter data of the contact that you want delete it,please:");
     printf("\n\n  ::Enter first name: ");
-    get_input(&input, &len);
-    strncpy(dfname_string, input, NAME_LENGTH);
-
+    get_input(NAME_LENGTH, dfname_string);
     printf("\n  ::Enter last name: ");
-    get_input(&input, &len);
-    strncpy(dlname_string, input, NAME_LENGTH);
-
-    for (i = 0; i < last; i++) {
-        if (strcmp(dfname_string, A[i].fname) == 0 && strcmp(dlname_string, A[i].lname) == 0) {
-
-            printf("\nContact was found! Details:");
-            printf("\n\nCantact %2.2d{", i + 1);
-            printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-                   A[i].telep, A[i].cellp);
-            printf("\n\nAre you sure you want to delete this contact?(y/n)");
-            ch = getc(stdin);
-            getc(stdin);
-            if (ch == 'y') {
-                for (j = i; j <= last; j++)
-                    A[j] = A[j + 1];
-
-                last--;
-                find = 1;
-                break;
-            }
+    get_input(NAME_LENGTH, dlname_string);
+    if (A == NULL)
+        return;
+    if (strcmp(dfname_string, A->fname) == 0 && strcmp(dlname_string, A->lname) == 0) {
+        printf("\nContact was found! Details:");
+        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A->fname, A->lname,
+               A->telep, A->cellp);
+        printf("\n\nAre you sure you want to delete this contact?(y/n)");
+        ch = (char) fgetc(stdin);
+        fgetc(stdin);
+        if (ch == 'y') {
+            temp = A;
+            A = A->next;
+            free(temp);
+            find = 1;
         }
     }
-    if (find == 0)
-        printf("\t\t\n<<This contact does not exist in this list or program can not delete it.>>");
-    else
-        printf("\t\t\n<<Target contact was successfully deleted from list!>>");
-    free(input);
+    if (find == 0) {
+        rear = A;
+        front = rear->next;
+        while (front != NULL) {
+            if (strcmp(dfname_string, front->fname) == 0 && strcmp(dlname_string, front->lname) == 0) {
+                printf("\nContact was found! Details:");
+                printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", front->fname,
+                       front->lname,
+                       front->telep, front->cellp);
+                printf("\n\nAre you sure you want to delete this contact?(y/n)");
+                ch = (char) fgetc(stdin);
+                fgetc(stdin);
+                if (ch == 'y') {
+                    find = 1;
+                    rear->next = front->next;
+                    free(front);
+                    break;
+                }
+            }
+            rear = front;
+            front = front->next;
+        }
+    }
+    printf(find == 0 ? "\t\t\n<<This contact does not exist in this list or program can not delete it.>>"
+                     : "\t\t\n<<Target contact was successfully deleted from list!>>");
     printf("\n\n\nPress a key to return main page & continue program|-->");
     getc(stdin);
 }
 
 void edit() {
-    char *input = NULL;
-    char *dfname = NULL, *dlname = NULL;
-    size_t len = 0;
-    size_t len_size = 0;
-    register int i, j, find = 0;
+    char dfname[NAME_LENGTH], dlname[NAME_LENGTH];
+    struct contact *temp = A;
+    register int find = 0;
     char ch;
     clrscr();
     printf("\nPhone Book12<::>Edit Contacts");
@@ -217,294 +226,224 @@ void edit() {
     printf("\n::Enter data of the contact that you want edit it,please:");
 
     printf("\n\n  ::Enter first name: ");
-    len_size = getline(&dfname, &len, stdin);
+    get_input(NAME_LENGTH, dfname);
     printf("\n  ::Enter last name: ");
-    len_size = getline(&dlname, &len, stdin);
-
-    for (i = 0; i < last; i++) {
-        if (strcmp(dfname, A[i].fname) == 0 && strcmp(dlname, A[i].lname) == 0) {
+    get_input(NAME_LENGTH, dlname);
+    while (temp != NULL) {
+        if (strcmp(dfname, temp->fname) == 0 && strcmp(dlname, temp->lname) == 0) {
             printf("\nContact found! Details:");
-            printf("\n\nCantact %2.2d{", i + 1);
-            printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-                   A[i].telep, A[i].cellp);
+            printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", temp->fname, temp->lname,
+                   temp->telep, temp->cellp);
             printf("\n\nDo you want edit it?(y/n) ");
-            ch = getc(stdin);
-            getc(stdin);
+            ch = (char) fgetc(stdin);
+            fgetc(stdin);
             if (ch == 'y') {
                 printf("\n::Enter NEW data for this contact...");
                 printf("\n >|Enter new first name: ");
-
-                scanf("%s", input);
-                strncpy(A[i].fname, input, NAME_LENGTH);
+                get_input(NAME_LENGTH, temp->fname);
                 printf(" >|Enter new last name: ");
-                scanf("%s", input);
-                strncpy(A[i].lname, input, NAME_LENGTH);
-
+                get_input(NAME_LENGTH, temp->lname);
                 printf(" >|Enter new telephone number: ");
-                scanf("%s", input);
-                strncpy(A[i].telep, input, NAME_LENGTH);
-
+                get_input(PHONE_LENGTH, temp->telep);
                 printf(" >|Enter new cellphone number: ");
-                scanf("%s", input);
-                strcpy(A[i].cellp, input);
-
+                get_input(PHONE_LENGTH, temp->cellp);
                 find = 1;
                 break;
             }
+            temp = temp->next;
         }
     }
-    if (find == 0)
-        printf("\t\t\n<<This contact does not exist or you chose not to Edit it.>>");
-    else
-        printf("\t\t\n<<Target contact was successfully updated!>>");
+    printf(find == 0 ? "\t\t\n<<This contact does not exist or you chose not to Edit it.>>"
+                     : "\t\t\n<<Target contact was successfully updated!>>");
     printf("\n\n\n   ::Press a key to return main page & continue program|-->");
     getc(stdin);
 }
 
 void search(void) {
     char ch;
-    clrscr();
-    printf("\nPhone Book12<::>$earch Contacts");
-    printf("\n--------------------------------------------------------------------------------");
-    printf("\nChoose search type,please:\n\n");
-    printf("\t[1] |--> Search by first name\n");
-    printf("\t[2] |--> Search by last name\n");
-    printf("\t[3] |--> Search by phone number\n");
-    printf("\t[4] |--> Search by cellphone number\n");
-    printf("\t[5] |--> Main Menu\n");
-    printf("\n\t::Enter a number (1-5): ");
-    ch = getc(stdin);
-    getc(stdin);
-    printf("\n--------------------------------------------------------------------------------");
-    switch (ch) {
-        case '1':
-            searchf();
-            break;
-        case '2':
-            searchl();
-            break;
-        case '3':
-            searchp();
-            break;
-        case '4':
-            searchc();
-            break;
-        case '5':
-        default:
-            return;
+    while (1) {
+        clrscr();
+        printf("\nPhone Book12<::>$earch Contacts");
+        printf("\n--------------------------------------------------------------------------------");
+        printf("\nChoose search type,please:\n\n");
+        printf("\t[1] |--> Search by first name\n");
+        printf("\t[2] |--> Search by last name\n");
+        printf("\t[3] |--> Search by phone number\n");
+        printf("\t[4] |--> Search by cellphone number\n");
+        printf("\t[5] |--> Main Menu\n");
+        printf("\n\t::Enter a number (1-5): ");
+        ch = (char) fgetc(stdin);
+        fgetc(stdin);
+        printf("\n--------------------------------------------------------------------------------");
+        switch (ch) {
+            case '1':
+                searchBy(&fNameMatch);
+                break;
+            case '2':
+                searchBy(&lNameMatch);
+                break;
+            case '3':
+                searchBy(&telpMatch);
+                break;
+            case '4':
+                searchBy(&cellpMatch);
+                break;
+            case '5':
+            default:
+                return;
+        }
     }
 }
 
-void searchf(void) {
-    char *fname = NULL;
-    register int i, find = 0;
-    size_t len = 0;
-    size_t len_size = 0;
-    printf("Enter a first name to search:");
-    len_size = getline(&fname, &len, stdin);
-    for (i = 0; i < last; i++)
-        if (strcmp(fname, A[i].fname) == 0) {
+void searchBy(int (*check)(const struct contact *current, const char *value)) {
+    register int find = 0;
+    struct contact *temp = A;
+    printf("Enter a first pattern to search:");
+    size_t size = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, stdin);
+    ALLOCATE_MEMORY[size - 1] = '\0';
+    while (temp != NULL) {
+        if (check(temp, ALLOCATE_MEMORY) == 0) {
             find = 1;
             break;
         }
+        temp = temp->next;
+    }
     if (find == 0)
-        printf("\t\n<<Not Find!There is no contact with this name in phone book.>>");
+        printf("\t\n<<Not Find!There is no contact with this pattern in phone book.>>");
     else {
         printf("\t\n<<Target contact found! Details:>>");
-        printf("\n\nCantact %2.2d{", i + 1);
-        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-               A[i].telep, A[i].cellp);
+        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", temp->fname, temp->lname,
+               temp->telep, temp->cellp);
     }
     printf("\nPress a key to search another contact.");
     getc(stdin);
-    search();
 }
 
-void searchl(void) {
-    char *lname = NULL;
-    register int i, find = 0;
-    size_t len = 0;
-    size_t len_size = 0;
-    printf("\n::Enter a last name to search:");
-    len_size = getline(&lname, &len, stdin);
-    for (i = 0; i < last; i++)
-        if (strcmp(lname, A[i].lname) == 0) {
-            find = 1;
-            break;
-        }
-    if (find == 0)
-        printf("\t\n<<Not Find!There is not contact with tish name in phone book.>>");
-    else {
-        printf("\t\n<<Target contact found! Details:>>");
-        printf("\n\nCantact %2.2d{", i + 1);
-        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-               A[i].telep, A[i].cellp);
-    }
-    printf("\nPress a key to search another contact.");
-    getc(stdin);
-    search();
+int fNameMatch(const struct contact *current, const char *pattern) {
+    return strcmp(current->fname, pattern);
 }
 
-void searchp(void) {
-
-    char *phone = NULL;
-    int i, find = 0;
-    char telep[5];
-    size_t len = 0;
-    size_t len_size = 0;
-    printf("\n::Enter a phone number to search:");
-    len_size = getline(&phone, &len, stdin);
-    strcpy(telep, phone);
-    for (i = 0; i < last; i++)
-        if (strcmp(telep, A[i].telep) == 0) {
-            find = 1;
-            break;
-        }
-    if (find == 0)
-        printf("\t\n<<Not Found!There is not contact with tish phone number  in phone book.>>");
-    else {
-        printf("\t\n<<Target contact found! Details:>>");
-        printf("\n\nCantact %2.2d{", i + 1);
-        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-               A[i].telep, A[i].cellp);
-    }
-    printf("\nPress a key to search another contact.");
-    getc(stdin);
-    search();
+int lNameMatch(const struct contact *current, const char *pattern) {
+    return strcmp(current->lname, pattern);
 }
 
-void searchc(void) {
+int telpMatch(const struct contact *current, const char *pattern) {
+    return strcmp(current->telep, pattern);
+}
 
-    char *phone = NULL;
-    char cell[5];
-    int i, find = 0;
-    size_t len = 0;
-    size_t len_size = 0;
-    printf("\n::Enter a cellphone number to search:");
-    len_size = getline(&phone, &len, stdin);
-    strcpy(cell, phone);
-
-    for (i = 0; i < last; i++)
-        if (strcmp(cell, A[i].cellp) == 0) {
-            find = 1;
-            break;
-        }
-    if (find == 0)
-        printf("\t\n<<Not Find!There is not contact with tish cellphone number in phone book.>>");
-    else {
-        printf("\t\n<<Target contact found! Details:>>");
-        printf("\n\nCantact %2.2d{", i + 1);
-        printf("\n\t   F.Name:%s\n\t   L.name:%s\n\t   Tele.P:%s\n\t   Cell.P:%s\n\t   }", A[i].fname, A[i].lname,
-               A[i].telep, A[i].cellp);
-    }
-    printf("\nPress a key to search another contact.");
-    getc(stdin);
-    search();
+int cellpMatch(const struct contact *current, const char *pattern) {
+    return strcmp(current->cellp, pattern);
 }
 
 void sort(void) {
     char ch;
-    clrscr();
-    printf("\nPhone Book12<::>$earch Contacts");
-    printf("\n--------------------------------------------------------------------------------");
-    printf("\nChoose sort type,please:\n\n");
-    printf("\t[1] |--> Sort by first name\n");
-    printf("\t[2] |--> Sort by last name\n");
-    printf("\t[3] |--> Sort by phone number\n");
-    printf("\t[4] |--> Sort by cellphone number\n");
-    printf("\t[5] |--> Main Menu\n");
-    printf("\n\t::Enter a number (1-5): ");
-    ch = getc(stdin);
-    getc(stdin);
-    printf("\n--------------------------------------------------------------------------------");
-    switch (ch) {
-        case '1':
-            sortf();
-            break;
-        case '2':
-            sortl();
-            break;
-        case '3':
-            sortp();
-            break;
-        case '4':
-            sortc();
-        case '5':
-        default:
-            return;
+    while (1) {
+        clrscr();
+        printf("\nPhone Book12<::>$earch Contacts");
+        printf("\n--------------------------------------------------------------------------------");
+        printf("\nChoose sort type,please:\n\n");
+        printf("\t[1] |--> Sort by first name\n");
+        printf("\t[2] |--> Sort by last name\n");
+        printf("\t[3] |--> Sort by phone number\n");
+        printf("\t[4] |--> Sort by cellphone number\n");
+        printf("\t[5] |--> Main Menu\n");
+        printf("\n\t::Enter a number (1-5): ");
+        ch = (char)fgetc(stdin);
+        fgetc(stdin);
+        printf("\n--------------------------------------------------------------------------------");
+        switch (ch) {
+            case '1':
+                A = mergeSort(A, &fNameCmp);
+                break;
+            case '2':
+                A = mergeSort(A, &lNameCmp);
+                break;
+            case '3':
+                A = mergeSort(A, &telpCmp);
+                break;
+            case '4':
+                A = mergeSort(A, &cellpCmp);
+            case '5':
+            default:
+                return;
+        }
     }
 }
 
-void sortf(void) {
-    struct contact B;
-    register int i, j;
-    for (i = last - 1; i > 0; i--)
-        for (j = 0; j < i; j++)
-            if (strcmp(A[j].fname, A[j + 1].fname) > 0) {
-                B = A[j];
-                A[j] = A[j + 1];
-                A[j + 1] = B;
-            }
-    printf("\nplease wait... .Contacts will be sorted by first names.");
+struct contact *mergeSort(struct contact *head, int (*compare)(const struct contact *r, const struct contact *l)) {
+    struct contact *list1 = NULL, *list_2 = NULL, *list;
+    if (A == NULL || A->next == NULL) return head;
+    split(head, &list1, &list_2);
+    list1 = mergeSort(list1, compare);
+    list_2 = mergeSort(list_2, compare);
+    list = merge(list1, list_2, compare);
+    printf("\nplease wait... .Contacts will be sorted.");
     list2();
     printf("\n   ::Press any key to sort contact by another form... ");
     getc(stdin);
-    sort();
+    return list;
+
 }
 
-void sortl(void) {
-    struct contact B;
-    register int i, j;
-    for (i = last - 1; i > 0; i--)
-        for (j = 0; j < i; j++)
-            if (strcmp(A[j].lname, A[j + 1].lname) > 0) {
-                B = A[j];
-                A[j] = A[j + 1];
-                A[j + 1] = B;
-            }
-    printf("\nplease wait... .Contacts will be sorted by last names.");
-    list2();
-    printf("\n   ::Press any key to sort contact by another form... ");
-    getc(stdin);
-    sort();
+void split(struct contact *list, struct contact **list1, struct contact **list2) {
+    bool to_list1 = false;
+    struct contact *temp;
+    while (list != NULL) {
+        temp = list;
+        list = list->next;
+        if (to_list1) {
+            temp->next = *list1;
+            *list1 = temp;
+        } else {
+            temp->next = *list2;
+            *list2 = temp;
+        }
+        to_list1 = !to_list1;
+    }
 }
 
-void sortp(void) {
-    struct contact B;
-    register int i, j;
-    for (i = last - 1; i > 0; i--)
-        for (j = 0; j < i; j++)
-            if (strcmp(A[j].telep, A[j + 1].telep) > 0) {
-                B = A[j];
-                A[j] = A[j + 1];
-                A[j + 1] = B;
-            }
-    printf("\nplease wait... .Contacts will be sorted by telephone numbers.");
-    list2();
-    printf("\n   ::Press any key to sort contact by another form... ");
-    getc(stdin);
-    sort();
+struct contact *
+merge(struct contact *list1, struct contact *list2, int (*compare)(const struct contact *r, const struct contact *l)) {
+    struct contact *list = NULL, *last_contact, *temp;
+    while (list1 != NULL && list2 != NULL) {
+        if (compare(list1, list2) <= 0) {
+            temp = list1;
+            list1 = list1->next;
+        } else {
+            temp = list2;
+            list2 = list2->next;
+        }
+        temp->next = NULL;
+        if (list == NULL) {
+            last_contact = list = temp;
+        } else {
+            last_contact->next = temp;
+            last_contact = temp;
+        }
+    }
+    last_contact->next = list1 == NULL ? list2 : list1;
+    return list;
 }
 
-void sortc(void) {
-    struct contact B;
-    register int i, j;
-    for (i = last - 1; i > 0; i--)
-        for (j = 0; j < i; j++)
-            if (strcmp(A[j].cellp, A[j + 1].cellp) > 0) {
-                B = A[j];
-                A[j] = A[j + 1];
-                A[j + 1] = B;
-            }
-    printf("\nPlease wait... .Contacts will be sort by cellphone numbers.");
-    list2();
-    printf("\n   ::Press any key to sort contact by another form... ");
-    getc(stdin);
-    sort();
+int fNameCmp(const struct contact *r, const struct contact *l) {
+    return strcmp(r->fname, l->fname);
+}
+
+int lNameCmp(const struct contact *r, const struct contact *l) {
+    return strcmp(r->lname, l->lname);
+}
+
+int telpCmp(const struct contact *r, const struct contact *l) {
+    return strcmp(r->telep, l->telep);
+}
+
+int cellpCmp(const struct contact *r, const struct contact *l) {
+    return strcmp(r->cellp, l->cellp);
 }
 
 void list() {
-    register int i;
+    register int i = 0;
+    struct contact *b = A;
     clrscr();
     printf("\nPhone Book12<::>All Contacts List");
     printf("\n--------------------------------------------------------------------------------");
@@ -519,17 +458,18 @@ void list() {
     gotoxy(60, 4);
     printf("Cellphone");
     printf("\n--------------------------------------------------------------------------------");
-    for (i = 0; i <= last; i++) {
+    for (; b != NULL; b = b->next) {
         gotoxy(1, i + 6);
         printf("%3.3d", i + 1);
         gotoxy(9, i + 6);
-        printf("%s", A[i].fname);
+        printf("%s", b->fname);
         gotoxy(28, i + 6);
-        printf("%s", A[i].lname);
+        printf("%s", b->lname);
         gotoxy(44, i + 6);
-        printf("%s", A[i].telep);
+        printf("%s", b->telep);
         gotoxy(60, i + 6);
-        printf("%s", A[i].cellp);
+        printf("%s\n", b->cellp);
+        i++;
     }
 
     printf("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
@@ -539,7 +479,8 @@ void list() {
 }
 
 void list2(void) {
-    register int i;
+    register int i = 0;
+    struct contact *temp;
     printf("\n--------------------------------------------------------------------------------");
     gotoxy(1, 18);
     printf("Row");
@@ -552,17 +493,18 @@ void list2(void) {
     gotoxy(60, 18);
     printf("Cellphone");
     printf("\n--------------------------------------------------------------------------------");
-    for (i = 0; i < last; i++) {
+    for(temp = A; temp != NULL; temp = temp->next) {
         gotoxy(1, i + 21);
         printf("%3.3d", i + 1);
         gotoxy(9, i + 21);
-        printf("%s", A[i].fname);
+        printf("%s", temp->fname);
         gotoxy(27, i + 21);
-        printf("%s", A[i].lname);
+        printf("%s", temp->lname);
         gotoxy(44, i + 21);
-        printf("%s", A[i].telep);
+        printf("%s", temp->telep);
         gotoxy(60, i + 21);
-        printf("%s", A[i].cellp);
+        printf("%s", temp->cellp);
+        i++;
     }
     printf("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     printf("\n\t\t    **********End Of list!**********");
@@ -592,6 +534,19 @@ void gotoxy(int x, int y) {
     printf("%c[%d;%df", 0x1B, y, x);
 }
 
-size_t get_input(char** str, size_t* len) {
-    return getline(str, len, stdin);
+void get_input(int len, char str[]) {
+    size_t new_len = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, stdin);
+    ALLOCATE_MEMORY[new_len - 1] = '\0';
+    strncpy(str, ALLOCATE_MEMORY, len);
+}
+
+void exitFreeMemory() {
+    struct contact *temp = A;
+    while (A != NULL) {
+        temp = A;
+        A = A->next;
+        free(temp);
+    }
+    free(ALLOCATE_MEMORY);
+    exit(1);
 }
