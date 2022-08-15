@@ -17,6 +17,9 @@ struct contact {
 
 struct contact *A = NULL;
 
+char *ALLOCATE_MEMORY = NULL;
+size_t ALLOCATE_SIZE = 0;
+
 void clrscr(void);
 
 void gotoxy(int x, int y);
@@ -116,32 +119,24 @@ int main() {
 
 void insert(void) {
     char ans = 'y';
-    size_t len = 0;
-    size_t len_size = 0;
     clrscr();
     printf("\nPhone Book12<::>Insert Contacts");
     printf("\n--------------------------------------------------------------------------------");
-    struct contact *b = A;
-    if (b == NULL) {
-        b = (struct contact*) malloc(sizeof(struct contact));
-    } else {
-        while (b->next != NULL)
-            b = b->next;
-        b->next = (struct contact*) malloc(sizeof(struct contact));
-        b = b->next;
-    }
     while (ans == 'y') {
+        struct contact* new_contact = (struct contact*) malloc(sizeof(struct contact));
         printf("\n\nData of Contact %2.2d{\n", last + 1);
         printf("\n\t  1-F.Name: ");
-        get_input(NAME_LENGTH, b->fname);
+        get_input(NAME_LENGTH, new_contact->fname);
         printf("\t  2-L.Name: ");
-        get_input(NAME_LENGTH, b->lname);
+        get_input(NAME_LENGTH, new_contact->lname);
         printf("\t  3-Tele.P: ");
-        get_input(PHONE_LENGTH, b->telep);
+        get_input(PHONE_LENGTH, new_contact ->telep);
         printf("\t  4-Cell.P: ");
-        get_input(PHONE_LENGTH, b->cellp);
+        get_input(PHONE_LENGTH, new_contact->cellp);
         printf("\n|-->Data Recorded!}");
         printf("\n\t\t\tNext Contact?(y/n) Answer:");
+        new_contact->next = A;
+        A = new_contact;
         ans = getc(stdin);
         getc(stdin);
         last++;
@@ -503,7 +498,7 @@ void sortc(void) {
 
 void list() {
     register int i;
-    struct contact* b = A;
+    struct contact *b = A;
     clrscr();
     printf("\nPhone Book12<::>All Contacts List");
     printf("\n--------------------------------------------------------------------------------");
@@ -592,19 +587,18 @@ void gotoxy(int x, int y) {
 }
 
 void get_input(int len, char str[]) {
-    char *temp = NULL;
     size_t current_len = 0;
-    size_t new_len = getline(&temp, &current_len, stdin);;
-    strncpy(str, temp, len);
-    free(temp);
+    size_t new_len = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, stdin);;
+    strncpy(str, ALLOCATE_MEMORY, len);
 }
 
-void exitFreeMemory(){
+void exitFreeMemory() {
     struct contact *temp = A;
-    while (A != NULL){
+    while (A != NULL) {
         temp = A;
-        A = A -> next;
+        A = A->next;
         free(temp);
     }
+    free(ALLOCATE_MEMORY);
     exit(1);
 }
