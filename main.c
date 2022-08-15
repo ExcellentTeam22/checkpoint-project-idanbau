@@ -130,6 +130,7 @@ int main() {
 
 void insert(void) {
     ssize_t line_size;
+    char* buf = NULL;
     FILE *fp = fopen("phonebookFile.txt", "r");
     if (!fp) {
         {
@@ -142,7 +143,14 @@ void insert(void) {
     while (line_size >= 0) {
         struct contact *new_contact = (struct contact *) malloc(sizeof(struct contact));
         new_contact->next = A;
-        sscanf(ALLOCATE_MEMORY, "%s\t%s\t%s\t%s", new_contact->fname, new_contact->lname, new_contact->telep, new_contact->cellp);
+        buf = strtok(ALLOCATE_MEMORY, "\t");
+        if(buf) strncpy(new_contact->fname, buf ,NAME_LENGTH);
+        buf = strtok(NULL, "\t");
+        if(buf) strncpy(new_contact->lname, buf, NAME_LENGTH);
+        buf = strtok(NULL, "\t");
+        if(buf) strncpy(new_contact->telep, buf, PHONE_LENGTH);
+        buf = strtok(NULL, "\n");
+        if(buf) strncpy(new_contact->cellp, buf, PHONE_LENGTH);
         A = new_contact;
         last++;
         line_size = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, fp);
@@ -475,7 +483,7 @@ void list() {
 
 void list2(void) {
     register int i = 0;
-    struct contact *temp;
+    struct contact* temp = A;
     printf("\n--------------------------------------------------------------------------------");
     gotoxy(1, 18);
     printf("Row");
@@ -488,7 +496,7 @@ void list2(void) {
     gotoxy(60, 18);
     printf("Cellphone");
     printf("\n--------------------------------------------------------------------------------");
-    for (temp = A; temp != NULL; temp = temp->next) {
+    for (; temp != NULL; temp = temp->next) {
         gotoxy(1, i + 21);
         printf("%3.3d", i + 1);
         gotoxy(9, i + 21);
