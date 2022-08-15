@@ -129,30 +129,25 @@ int main() {
 }//End of main function!
 
 void insert(void) {
-    char ans = 'y';
-    clrscr();
-    printf("\nPhone Book12<::>Insert Contacts");
-    printf("\n--------------------------------------------------------------------------------");
-    while (ans == 'y') {
-        struct contact *new_contact = (struct contact *) malloc(sizeof(struct contact));
-        printf("\n\nData of Contact %2.2d{\n", last + 1);
-        printf("\n\t  1-F.Name: ");
-        get_input(NAME_LENGTH, new_contact->fname);
-        printf("\t  2-L.Name: ");
-        get_input(NAME_LENGTH, new_contact->lname);
-        printf("\t  3-Tele.P: ");
-        get_input(PHONE_LENGTH, new_contact->telep);
-        printf("\t  4-Cell.P: ");
-        get_input(PHONE_LENGTH, new_contact->cellp);
-        printf("\n|-->Data Recorded!}");
-        printf("\n\t\t\tNext Contact?(y/n) Answer:");
-        new_contact->next = A;
-        A = new_contact;
-        ans = (char) fgetc(stdin);
-        fgetc(stdin);
-        last++;
+    ssize_t line_size;
+    FILE *fp = fopen("phonebookFile.txt", "r");
+    if (!fp) {
+        {
+            fprintf(stderr, "Error opening file '%s'\n", "phonebookfile.txt");
+            exit(EXIT_FAILURE);
+        }
     }
-
+    clrscr();
+    line_size = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, fp);
+    while (line_size >= 0) {
+        struct contact *new_contact = (struct contact *) malloc(sizeof(struct contact));
+        new_contact->next = A;
+        sscanf(ALLOCATE_MEMORY, "%s\t%s\t%s\t%s", new_contact->fname, new_contact->lname, new_contact->telep, new_contact->cellp);
+        A = new_contact;
+        last++;
+        line_size = getline(&ALLOCATE_MEMORY, &ALLOCATE_SIZE, fp);
+    }
+    fclose(fp);
     printf("\n\nYou have inserted ( %d ) contact!\nPress a key to return main page & continue program|-->", last);
     getc(stdin);
 }
@@ -250,8 +245,8 @@ void edit() {
                 find = 1;
                 break;
             }
-            temp = temp->next;
         }
+        temp = temp->next;
     }
     printf(find == 0 ? "\t\t\n<<This contact does not exist or you chose not to Edit it.>>"
                      : "\t\t\n<<Target contact was successfully updated!>>");
@@ -348,7 +343,7 @@ void sort(void) {
         printf("\t[4] |--> Sort by cellphone number\n");
         printf("\t[5] |--> Main Menu\n");
         printf("\n\t::Enter a number (1-5): ");
-        ch = (char)fgetc(stdin);
+        ch = (char) fgetc(stdin);
         fgetc(stdin);
         printf("\n--------------------------------------------------------------------------------");
         switch (ch) {
@@ -493,7 +488,7 @@ void list2(void) {
     gotoxy(60, 18);
     printf("Cellphone");
     printf("\n--------------------------------------------------------------------------------");
-    for(temp = A; temp != NULL; temp = temp->next) {
+    for (temp = A; temp != NULL; temp = temp->next) {
         gotoxy(1, i + 21);
         printf("%3.3d", i + 1);
         gotoxy(9, i + 21);
@@ -503,7 +498,7 @@ void list2(void) {
         gotoxy(44, i + 21);
         printf("%s", temp->telep);
         gotoxy(60, i + 21);
-        printf("%s", temp->cellp);
+        printf("%s\n", temp->cellp);
         i++;
     }
     printf("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
